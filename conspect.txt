@@ -11,7 +11,7 @@ django-admin startproject 'name' - команда для створення дж
 
 python manage.py startapp 'name' - команда для створення джанго додатка
 
-managments/commands - папка, яка відповідає за зберігання основних команд
+management/commands - папка, яка відповідає за зберігання основних команд
 
 utils - папка для зберігання додаткових файлів
 
