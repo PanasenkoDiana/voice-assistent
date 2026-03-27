@@ -1,8 +1,12 @@
 from django.core.management.base import BaseCommand
 import speech_recognition as sr
 from core.models import Voice_response, App_command
-from core.utils import speak_async
+from core.utils.voice_engine import speak_async
+import platform
 import os
+
+from core.utils.finder import find_app_path
+from core.management.commands.add_command import add_new_app_command_voice
 
 class Command(BaseCommand):
     # handle - метод який відповідає за точку входу в програму 
@@ -39,7 +43,7 @@ class Command(BaseCommand):
                     # language - мова для розпізнання
                     command_text = recognizer.recognize_google(audio, language = "uk-UA")
                     self.stdout.write(f"Ви сказали {command_text}")
-                    self.proccess_command(command_text, source)
+                    self.process_command(command_text, source)
                     
                 except sr.UnknownValueError:
                     continue
@@ -51,6 +55,11 @@ class Command(BaseCommand):
     def process_command(self, command_text: str, source):
         command_text = command_text.lower().strip()
         # Якщо в команді нема слова відкрий 
+
+        if "додати команду" in command_text:
+            add_new_app_command_voice(source)
+            return 
+
         if "відкрий" not in command_text:
             # Перебираємо всі об'єкти моделі
             # objects.all - отримання всіх об'єктів з моделі
@@ -77,3 +86,25 @@ class Command(BaseCommand):
             return
         
         speak_async(f"Шукаю {found_app.app_name}")
+        found_path = find_app_path(found_app.app_name)
+
+        if found_path:
+            found_app.path = found_path
+            #save() - дозволяє зберегти зміни в базі даних 
+            found_app.save()
+            speak_async(f"Відкриваю {found_app.app_name}")
+            self.launch_app(found_path)
+        else:
+            speak_async(f"Я не змогла знайти цю програму на компе")
+            
+    def launch_app(self, path):
+        try:
+            if platform.system() == "Windows":
+                #Стандартний спосіб відкрити програму або файл на Windows
+                os.startfile(path)
+            else:
+                #Виконує команду в терміналі 
+                # "open -a" - команда для MacOS чи Linux для вікриття програм
+                os.system("open -a" + path)
+        except Exception as err:
+            self.stdout.write(self.style.ERROR(f"Помилка запуску {err}"))
